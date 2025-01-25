@@ -1,7 +1,5 @@
 import pandas as pd
 
-import pandas as pd
-
 def sort_by_name(file_path: str, output_path: str) -> None:
 
     df = pd.read_csv(file_path)
@@ -101,6 +99,15 @@ def get_medals(input_file, output_file):
 
     medals_df.to_csv(output_file, index=False)
 
+def get_team_sports(input_file, output_file):
+    team_keyword_list = set(["Relay", "Double", "Team", "Mixed", "Two Person", "Three Person", "Four Person", "Five Person", "Six Person", "Pairs", "Fours", "Quadruple", "Sixes", "Eights",
+                         "Basketball", "Baseball", "Volleyball", "Tandem", "Football", "Handball", "Hockey", "Curling", "Water Polo", "Rugby", "Rowing", "Soccer", "Softball", "Rugby", "Polo", "Cricket", "Lacrosse", "Tug-Of-War", "Group"])
+
+    df = pd.read_csv(input_file)
+    # create a column named Team_Sport that is 1 if either column "Sport" or "Event" contains a team keyword in team_keyword_list, 0 otherwise
+    df["Team_Sport"] = df.apply(lambda row: 1 if any(keyword in row["Sport"] for keyword in team_keyword_list) or any(keyword in row["Event"] for keyword in team_keyword_list) else 0, axis=1)
+    df.to_csv(output_file, index=False)
+
 def get_irregularities(input_file):
 
     df = pd.read_csv(input_file)
@@ -121,9 +128,6 @@ def get_irregularities(input_file):
 
         if (year, sport, event) not in year_sport_event_dict:
             year_sport_event_dict[(year, sport, event)] = {"Gold": 0, "Silver": 0, "Bronze": 0}
-
-        if sport == "Boxing" and year == 1960 and event == "Boxing Men's Flyweight":
-            print(row)
         year_sport_event_dict[(year, sport, event)][medal] += 1
 
     with open("irregularities.txt", "w") as f:
@@ -132,5 +136,21 @@ def get_irregularities(input_file):
             gold, silver, bronze = value["Gold"], value["Silver"], value["Bronze"]
             if gold != 1 or silver != 1 or bronze != 1:
                 f.write(f"{year}, {sport}, {event}: {gold} Gold, {silver} Silver, {bronze} Bronze\n")
+                
+    with open("high_irregularities.txt", "w") as f:
+        for key, value in year_sport_event_dict.items():
+            year, sport, event = key
+            gold, silver, bronze = value["Gold"], value["Silver"], value["Bronze"]
+            if (gold != 1 or silver != 1 or bronze != 1) and not (gold == 1 and silver == 1 and bronze == 2):
+                f.write(f"{year}, {sport}, {event}: {gold} Gold, {silver} Silver, {bronze} Bronze\n")
 
-get_irregularities("athletes_teams.csv")
+    with open("bronze_irregularities.txt", "w") as f:
+        for key, value in year_sport_event_dict.items():
+            year, sport, event = key
+            gold, silver, bronze = value["Gold"], value["Silver"], value["Bronze"]
+            if gold == 1 and silver == 1 and bronze == 2:
+                f.write(f"{year}, {sport}, {event}: {gold} Gold, {silver} Silver, {bronze} Bronze\n")
+
+get_team_sports("raw_data/summerOly_athletes.csv", "summerOly_athletes_team.csv")
+map_ids("summerOly_athletes_team.csv", "summerOly_athletes_team_id.csv")
+get_irregularities("summerOly_athletes_team_id.csv")
