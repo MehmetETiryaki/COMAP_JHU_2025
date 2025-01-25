@@ -184,7 +184,65 @@ def get_medal_tensor(input_file):
         elif medal == "Bronze":
             medals_tensor[year][country][2] = 1
 
-get_team_sports("raw_data/summerOly_athletes.csv", "summerOly_athletes_team.csv")
-get_irregularities("summerOly_athletes_team.csv")
-delete_irregulars("high_irregularities.txt", "summerOly_athletes_team.csv", "summerOly_athletes_team_no_high_irregulars.csv")
-map_ids("summerOly_athletes_team_no_high_irregulars.csv", "summerOly_athletes_team_id_no_high_irregulars.csv")
+def assign_id(input_file, output_file):
+    # Load the data
+    df = pd.read_csv(input_file)
+    
+    # Assign unique IDs to years
+    unique_years = sorted(df['Year'].unique())
+    year_to_id = {year: idx for idx, year in enumerate(unique_years)}
+    df['Year'] = df['Year'].map(year_to_id)
+
+    # Assign unique IDs to countries (NOC codes)
+    unique_nocs = sorted(df['NOC'].unique())
+    noc_to_id = {noc: idx for idx, noc in enumerate(unique_nocs)}
+    df['NOC'] = df['NOC'].map(noc_to_id)
+
+    # Assign unique IDs to sports
+    unique_sports = sorted(df['Sport'].unique())
+    sport_to_id = {sport: idx for idx, sport in enumerate(unique_sports)}
+    df['Sport'] = df['Sport'].map(sport_to_id)
+
+    # Assign unique IDs to events within each sport
+    event_id_mapping = {}
+    event_id_list = []
+
+    for sport in df['Sport'].unique():
+        sport_events = sorted(df[df['Sport'] == sport]['Event'].unique())
+        event_mapping = {event: idx for idx, event in enumerate(sport_events)}
+        event_id_mapping[sport] = event_mapping
+
+        # Prepare data for mapping file
+        for event, event_id in event_mapping.items():
+            event_id_list.append({'Sport': sport, 'Event': event, 'Event_ID': event_id})
+
+    df['Event'] = df.apply(lambda row: event_id_mapping[row['Sport']][row['Event']], axis=1)
+
+    # Save the updated dataset with IDs replacing original values
+    df.to_csv(output_file, index=False)
+
+    # Create mapping dataframes
+    noc_mapping_df = pd.DataFrame(list(noc_to_id.items()), columns=['NOC', 'NOC_ID'])
+    sport_mapping_df = pd.DataFrame(list(sport_to_id.items()), columns=['Sport', 'Sport_ID'])
+    # Make sure that the sports are sorted for the event file
+    event_mapping_df = pd.DataFrame(event_id_list, columns=['Sport', 'Event', 'Event_ID'])
+    event_mapping_df = event_mapping_df.sort_values(by=['Sport', 'Event_ID'])
+    year_mapping_df = pd.DataFrame(list(year_to_id.items()), columns=['Year', 'Year_ID'])
+
+    # Save mappings to CSV
+    mappings_output_file = 'olympic_mappings.xlsx'
+    with pd.ExcelWriter(mappings_output_file) as writer:
+        year_mapping_df.to_excel(writer, sheet_name='Year_Mapping', index=False)
+        noc_mapping_df.to_excel(writer, sheet_name='NOC_Mapping', index=False)
+        sport_mapping_df.to_excel(writer, sheet_name='Sport_Mapping', index=False)
+        event_mapping_df.to_excel(writer, sheet_name='Event_Mapping', index=False)
+
+    print(f"Updated data file saved as: {output_file}")
+    print(f"Mapping files saved as: {mappings_output_file}")
+
+#get_team_sports("raw_data/summerOly_athletes.csv", "summerOly_athletes_team.csv")
+#get_irregularities("summerOly_athletes_team.csv")
+#delete_irregulars("high_irregularities.txt", "summerOly_athletes_team.csv", "summerOly_athletes_team_no_high_irregulars.csv")
+#map_ids("summerOly_athletes_team_no_high_irregulars.csv", "summerOly_athletes_team_id_no_high_irregulars.csv")
+assign_id("summerOly_athletes_team_id_no_high_irregulars.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical.csv")
+
