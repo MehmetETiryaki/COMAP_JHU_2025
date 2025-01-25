@@ -239,25 +239,65 @@ def assign_id(input_file, output_file):
 
     print(f"Updated data file saved as: {output_file}")
     print(f"Mapping files saved as: {mappings_output_file}")
-"""
 
-def combining_teams(input_file, output_file):
-    # Load the data
+def combine_teams(input_file, output_file):
+    # Read input CSV
     df = pd.read_csv(input_file)
+    df_copy = df.copy()
+
+    # Filter for team sports
+    df_teams = df[df["Team_Sport"] == 1].copy()
+
+    # Initialize dictionary to group teams
+    team_dict = {}
+
+    # Group rows by (Year, Sport, Event, Team, NOC, City, Medal)
+    for idx, row in df_teams.iterrows():
+        key = (row["Year"], row["Sport"], row["Event"], row["Team"], row["NOC"], row["City"], row["Medal"])
+        if key not in team_dict:
+            team_dict[key] = [idx]
+        else:
+            team_dict[key].append(idx)
+
+    # Create combined rows
+    rows_to_insert = []
+    for key, indices in team_dict.items():
+        # Take the first row as a base
+        combined_row = df_copy.loc[indices[0]].copy()
+        combined_names = ", ".join(df_copy.loc[i, "Name"] for i in indices)
+
+        mean_experience = df_copy.loc[indices, "Experience"].mean()
+        std_experience = df_copy.loc[indices, "Experience"].std()
+
+        # Update fields for the combined row
+        combined_row["Name"] = combined_names
+        combined_row["Sex"] = "N"  # Neutral or not applicable
+        combined_row["Team"] = key[3]
+        combined_row["NOC"] = key[4]
+        combined_row["Year"] = key[0]
+        combined_row["City"] = key[5]
+        combined_row["Sport"] = key[1]
+        combined_row["Event"] = key[2]
+        combined_row["Medal"] = key[6]
+        combined_row["Team_Sport"] = 1
+        combined_row["ID"] = -1
+        combined_row["Experience"] = mean_experience
+        combined_row["Experience_std"] = std_experience 
+
+        rows_to_insert.append(combined_row)
+
+    # Remove original team sport rows
+    for indices in team_dict.values():
+        df_copy.drop(indices, inplace=True)
+
+    # Add combined rows back to the DataFrame
+    df_combined = pd.concat([df_copy, pd.DataFrame(rows_to_insert)], ignore_index=True)
+
+    # Save to output file
+    df_combined.to_csv(output_file, index=False)
+    print(f"Processed data saved to {output_file}")
 
 
-
-    # Combine team sport entries based on year, NOC, sport, event, and teams column
-    combined_team_sports = team_sports_df.groupby(['Year', 'NOC', 'Sport', 'Event', 'Team']).agg(aggregation_rules).reset_index()
-
-    # Merge the individual and processed team sports data back together
-    processed_df = pd.concat([individual_sports_df, combined_team_sports], ignore_index=True)
-
-    # Save the processed dataset
-    processed_df.to_csv(output_file, index=False)
-
-    print(f"Processed data saved as: {output_file}")
-"""
 def experience(input_file, output_file):
     df = pd.read_csv(input_file)
 
@@ -268,10 +308,10 @@ def experience(input_file, output_file):
     print(f"Processed data saved as: {output_file}")
 
 
-#get_team_sports("raw_data/summerOly_athletes.csv", "summerOly_athletes_team.csv")
-#get_irregularities("summerOly_athletes_team.csv")
-#delete_irregulars("high_irregularities.txt", "summerOly_athletes_team.csv", "summerOly_athletes_team_no_high_irregulars.csv")
-#map_ids("summerOly_athletes_team_no_high_irregulars.csv", "summerOly_athletes_team_id_no_high_irregulars.csv")
-#assign_id("summerOly_athletes_team_id_no_high_irregulars.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical.csv")
-#combining_teams("summerOly_athletes_team_id_no_high_irregulars_numerical.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_combined.csv")
-#experience("summerOly_athletes_team_id_no_high_irregulars_numerical.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_experience.csv")
+get_team_sports("raw_data/summerOly_athletes.csv", "summerOly_athletes_team.csv")
+get_irregularities("summerOly_athletes_team.csv")
+delete_irregulars("high_irregularities.txt", "summerOly_athletes_team.csv", "summerOly_athletes_team_no_high_irregulars.csv")
+map_ids("summerOly_athletes_team_no_high_irregulars.csv", "summerOly_athletes_team_id_no_high_irregulars.csv")
+assign_id("summerOly_athletes_team_id_no_high_irregulars.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical.csv")
+experience("summerOly_athletes_team_id_no_high_irregulars_numerical.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_experience.csv")
+combine_teams("summerOly_athletes_team_id_no_high_irregulars_numerical_experience.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_experience_combined.csv")
