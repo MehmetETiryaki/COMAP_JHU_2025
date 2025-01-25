@@ -308,10 +308,42 @@ def experience(input_file, output_file):
     print(f"Processed data saved as: {output_file}")
 
 
-get_team_sports("raw_data/summerOly_athletes.csv", "summerOly_athletes_team.csv")
-get_irregularities("summerOly_athletes_team.csv")
-delete_irregulars("high_irregularities.txt", "summerOly_athletes_team.csv", "summerOly_athletes_team_no_high_irregulars.csv")
-map_ids("summerOly_athletes_team_no_high_irregulars.csv", "summerOly_athletes_team_id_no_high_irregulars.csv")
-assign_id("summerOly_athletes_team_id_no_high_irregulars.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical.csv")
-experience("summerOly_athletes_team_id_no_high_irregulars_numerical.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_experience.csv")
-combine_teams("summerOly_athletes_team_id_no_high_irregulars_numerical_experience.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_experience_combined.csv")
+def reassign_ids(input_file, output_file):
+    
+    df = pd.read_csv(input_file)
+
+    # Get unique IDs excluding -1 and sort them
+    unique_old_ids = sorted(df[df['ID'] != -1]['ID'].unique())
+
+    # Create a mapping from old IDs to new IDs starting from 0
+    old_id_to_new_id = {old_id: new_id for new_id, old_id in enumerate(unique_old_ids)}
+
+    # Replace the old IDs with the newly assigned ones
+    df['ID'] = df['ID'].map(lambda x: old_id_to_new_id.get(x, -1))
+
+    # Handle cases where ID is -1 by assigning unique IDs
+    missing_names = df[df['ID'] == -1]['Name'].unique()
+    start_new_id = max(old_id_to_new_id.values(), default=-1) + 1
+    name_to_new_id = {name: idx + start_new_id for idx, name in enumerate(sorted(missing_names))}
+
+    # Fill reassigned IDs for previously missing ones
+    df['ID'] = df.apply(
+        lambda row: name_to_new_id[row['Name']] if row['ID'] == -1 else row['ID'], axis=1
+    )
+
+    # Save the updated dataset with the replaced ID column
+    df.to_csv(output_file, index=False)
+
+    print(f"Processed data saved as: {output_file}")
+
+
+
+
+#get_team_sports("raw_data/summerOly_athletes.csv", "summerOly_athletes_team.csv")
+#get_irregularities("summerOly_athletes_team.csv")
+#delete_irregulars("high_irregularities.txt", "summerOly_athletes_team.csv", "summerOly_athletes_team_no_high_irregulars.csv")
+#map_ids("summerOly_athletes_team_no_high_irregulars.csv", "summerOly_athletes_team_id_no_high_irregulars.csv")
+#assign_id("summerOly_athletes_team_id_no_high_irregulars.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical.csv")
+#experience("summerOly_athletes_team_id_no_high_irregulars_numerical.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_experience.csv")
+#combine_teams("summerOly_athletes_team_id_no_high_irregulars_numerical_experience.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_experience_combined.csv")
+reassign_ids("summerOly_athletes_team_id_no_high_irregulars_numerical_experience_combined.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_experience_combined_reassigned.csv")
