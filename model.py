@@ -14,15 +14,15 @@ import pickle
 pyro.clear_param_store()
 
 def model(data):
-    medal, theta, results, rankings = data
-    T = len(results)
-    n_countries = len(results[0])
+    medal, theta, events = data
+    num_sports = theta.shape[2]
+    T = medal.shape[0]
+    n_countries = medal.shape[1]
     # number of embedded parameters
     n_embedding = 4
     # intial value of Country Effect (CE)
-    CE_prev = torch.full((n_countries,), 1.0)
-    CE_t = torch.full((n_countries,), 1.0)
-    P_t = torch.full((n_countries,), 1.0)
+    CE_prev = torch.full((n_countries,), 0.0)
+    CE_t = torch.full((n_countries,), 0.0)
     # hyperparameters that control the Beta prior
     alp_CE_0, beta_CE_0 = torch.tensor(5.0), torch.tensor(5.0)
     # hyperparameters that control the Uniform distribution
@@ -55,26 +55,25 @@ def model(data):
     # sample sig2_P
     sig2_P = pyro.sample("sig2_P", dist.HalfCauchy(scale_P_0))
     # loop over the observed time series
+
     for t in range(T):
-        n_countries = len(results[t])
-        # loop over countries
+        P_t = torch.full((n_countries, num_sports), 0.0)
         for country in range(n_countries):
-            CE_t[country] = pyro.sample(f"CE_{t}_{country}", dist.Normal(phi*CE_prev[country] + (torch.mul(w, medal[t][country])), sig2_CE**0.5))
-            # loop over sports for each country
-            for sport in range(len(results[t][country])):
-                P_t[country] = pyro.sample(f"P_{t}_{country}_{sport}", dist.Normal(rho*CE_t[country] + torch.mul(beta_embed, theta[t][country][sport]), sig2_P**0.5))
+            if t == 0:
+                CE_t[country] = pyro.sample(f"CE_{t}_{country}", dist.Normal(alpha, sig2_CE**0.5))
+            else:
+                CE_t[country] = pyro.sample(f"CE_{t}_{country}", dist.Normal(phi*CE_prev[country] + (torch.dot(w, medal[t-1][country])), sig2_CE**0.5))
 
-            # Use NumPyro's Plackett-Luce for ranking model
-            for event_ranking in range(ranking[t][sport]):
-                for r, ranking in enumerate(event_ranking):  # Loop through observed rankings
-                    remaining_players = torch.arange(n_countries).tolist()
-                    for i, player in enumerate(ranking):  # Sequential ranking
-                        logits = torch.log(P_t[remaining_players])  # Strengths of unranked players
-                        probs = torch.softmax(logits, dim=0)
-                        # Use NumPyro's PlackettLuce distribution for sampling rankings
-                        npyro.sample(f"rank_{r}_{i}", numpyro_dist.PlackettLuce(probs), obs=torch.tensor(player))
-                        remaining_players.remove(player)  # Remove the ranked player
+            #loop over sports for each country
 
+            for sport in range(num_sports):
+                P_t[country][sport] = pyro.sample(f"P_{t}_{country}_{sport}", dist.Normal(rho*CE_t[country] + torch.dot(beta_embed, theta[t][country][sport]), sig2_P**0.5))
+
+        for sport in range(num_sports):
+            for event in range(events[t][sport]):
+                country_P_t_vector = P_t[:, sport]
+                npyro.sample(f"rank_{r}_{i}", numpyro_dist.PlackettLuce(country_P_t_vector), obs=torch.tensor(player))
+        
         CE_prev = CE_t
 
 def guide(data):
