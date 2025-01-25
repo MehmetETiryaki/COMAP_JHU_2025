@@ -13,6 +13,13 @@ import pickle
 # clear the param store in case we're in a REPL
 pyro.clear_param_store()
 
+def PlackettLuce_LogLikelihood(P_t, ranking_obs):
+    log_likelihood = 0
+    remaining = [i for i in range(len(P_t))]
+    for medal in range(len(ranking_obs)):
+        log_likelihood += math.log(P_t[ranking_obs[medal]]) - math.log(torch.sum(P_t[remaining]))
+        remaining.remove(ranking_obs[medal])
+
 def model(data):
     medal, theta, events = data
     num_sports = theta.shape[2]
@@ -67,12 +74,13 @@ def model(data):
             #loop over sports for each country
 
             for sport in range(num_sports):
-                P_t[country][sport] = pyro.sample(f"P_{t}_{country}_{sport}", dist.Normal(rho*CE_t[country] + torch.dot(beta_embed, theta[t][country][sport]), sig2_P**0.5))
+                P_t[country][sport] = pyro.sample(f"P_{t}_{country}_{sport}", dist.LogNormal(rho*CE_t[country] + torch.dot(beta_embed, theta[t][country][sport]), sig2_P**0.5))
 
         for sport in range(num_sports):
             for event in range(events[t][sport]):
                 country_P_t_vector = P_t[:, sport]
-                npyro.sample(f"rank_{r}_{i}", numpyro_dist.PlackettLuce(country_P_t_vector), obs=torch.tensor(player))
+                log_likelihood = PlackettLuce_LogLikelihood(country_P_t_vector, result[t][sport][event])
+                pyro.factor(f"likelihood_{t}", log_likelihood)
         
         CE_prev = CE_t
 
