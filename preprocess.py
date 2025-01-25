@@ -1,4 +1,5 @@
 import pandas as pd
+import torch
 
 def sort_by_name(file_path: str, output_path: str) -> None:
 
@@ -135,22 +136,55 @@ def get_irregularities(input_file):
             year, sport, event = key
             gold, silver, bronze = value["Gold"], value["Silver"], value["Bronze"]
             if gold != 1 or silver != 1 or bronze != 1:
-                f.write(f"{year}, {sport}, {event}: {gold} Gold, {silver} Silver, {bronze} Bronze\n")
-                
+                f.write(f"{year}| {sport}| {event}: {gold} Gold, {silver} Silver, {bronze} Bronze\n")
+
     with open("high_irregularities.txt", "w") as f:
         for key, value in year_sport_event_dict.items():
             year, sport, event = key
             gold, silver, bronze = value["Gold"], value["Silver"], value["Bronze"]
             if (gold != 1 or silver != 1 or bronze != 1) and not (gold == 1 and silver == 1 and bronze == 2):
-                f.write(f"{year}, {sport}, {event}: {gold} Gold, {silver} Silver, {bronze} Bronze\n")
+                f.write(f"{year}| {sport}| {event}: {gold} Gold, {silver} Silver, {bronze} Bronze\n")
 
     with open("bronze_irregularities.txt", "w") as f:
         for key, value in year_sport_event_dict.items():
             year, sport, event = key
             gold, silver, bronze = value["Gold"], value["Silver"], value["Bronze"]
             if gold == 1 and silver == 1 and bronze == 2:
-                f.write(f"{year}, {sport}, {event}: {gold} Gold, {silver} Silver, {bronze} Bronze\n")
+                f.write(f"{year}| {sport}| {event}: {gold} Gold, {silver} Silver, {bronze} Bronze\n")
+
+def delete_irregulars(irregular_txt, input_file, output_file):
+
+    with open(irregular_txt, "r") as f:
+        irregulars = f.readlines()
+
+    df = pd.read_csv(input_file)
+
+    for line in irregulars:
+        year, sport, event = line.split(":")[0].split("| ")
+        year = int(year)
+        df = df[~((df["Year"] == year) & (df["Sport"] == sport) & (df["Event"] == event))]
+
+    df.to_csv(output_file, index=False)
+
+def get_medal_tensor(input_file):
+    num_unique_times = len(pd.read_csv(input_file)["Year"].unique())
+    num_countries = len(pd.read_csv(input_file)["NOC"].unique())
+
+    medals_tensor = torch.zeros((num_unique_times, num_countries, 3))
+
+    for row in pd.read_csv(input_file).iterrows():
+        year = row[1]["Year"]
+        country = row[1]["NOC"]
+        medal = row[1]["Medal"]
+
+        if medal == "Gold":
+            medals_tensor[year][country][0] = 1
+        elif medal == "Silver":
+            medals_tensor[year][country][1] = 1
+        elif medal == "Bronze":
+            medals_tensor[year][country][2] = 1
 
 get_team_sports("raw_data/summerOly_athletes.csv", "summerOly_athletes_team.csv")
-map_ids("summerOly_athletes_team.csv", "summerOly_athletes_team_id.csv")
-get_irregularities("summerOly_athletes_team_id.csv")
+get_irregularities("summerOly_athletes_team.csv")
+delete_irregulars("high_irregularities.txt", "summerOly_athletes_team.csv", "summerOly_athletes_team_no_high_irregulars.csv")
+map_ids("summerOly_athletes_team_no_high_irregulars.csv", "summerOly_athletes_team_id_no_high_irregulars.csv")
