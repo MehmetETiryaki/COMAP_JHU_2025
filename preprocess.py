@@ -239,7 +239,7 @@ def assign_id(input_file, output_file):
 
     print(f"Updated data file saved as: {output_file}")
     print(f"Mapping files saved as: {mappings_output_file}")
-
+"""
 
 def combining_teams(input_file, output_file):
     # Load the data
@@ -257,7 +257,15 @@ def combining_teams(input_file, output_file):
     processed_df.to_csv(output_file, index=False)
 
     print(f"Processed data saved as: {output_file}")
+"""
+def experience(input_file, output_file):
+    df = pd.read_csv(input_file)
 
+    df['Experience'] = df.groupby('ID')['Year'].rank(method='dense').astype(int) - 1
+    df['Experience_std'] = 0
+    df.to_csv(output_file, index=False)
+
+    print(f"Processed data saved as: {output_file}")
 
 
 #get_team_sports("raw_data/summerOly_athletes.csv", "summerOly_athletes_team.csv")
@@ -265,4 +273,5 @@ def combining_teams(input_file, output_file):
 #delete_irregulars("high_irregularities.txt", "summerOly_athletes_team.csv", "summerOly_athletes_team_no_high_irregulars.csv")
 #map_ids("summerOly_athletes_team_no_high_irregulars.csv", "summerOly_athletes_team_id_no_high_irregulars.csv")
 #assign_id("summerOly_athletes_team_id_no_high_irregulars.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical.csv")
-combining_teams("summerOly_athletes_team_id_no_high_irregulars_numerical.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_combined.csv")
+#combining_teams("summerOly_athletes_team_id_no_high_irregulars_numerical.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_combined.csv")
+#experience("summerOly_athletes_team_id_no_high_irregulars_numerical.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_experience.csv")
