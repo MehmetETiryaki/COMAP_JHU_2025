@@ -137,8 +137,8 @@ def monte_carlo_simulation(n_samples, data, T_last):
             f"P_pred_loc",
             dist.LogNormal(P_pred_loc, torch.ones((n_countries, num_sports))).to_event(2)
         )
-        for index, value in enumerate(P_pred[:65]):
-            print(index, value)
+        for index, value in enumerate(P_pred[42,:]):
+            print("P", index, value)
         
         # Use the Plackett-Luce likelihood to generate event outcomes based on P_T
         medal_count_pred = torch.zeros((n_countries, 3), dtype=torch.int)
