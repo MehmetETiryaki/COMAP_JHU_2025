@@ -327,6 +327,53 @@ def delete_years(input_file, output_file, years):
     # Save the result to the output path
     df.to_csv(output_file, index=False)
 
+def home_country(input_file, output_file):
+    df = pd.read_csv(input_file)
+
+    host_city_to_noc = {
+        'Athens': 83,
+        'Paris': 71,
+        'St. Louis': 220,
+        'London': 76,
+        'Stockholm': 197,
+        'Antwerp': 20,
+        'Amsterdam': 148,
+        'Los Angeles': 220,
+        'Berlin': 81,
+        'Helsinki': 70,
+        'Melbourne': 13,
+        'Rome': 102,
+        'Roma' : 102,
+        'Tokyo': 106,
+        'Mexico City': 133,
+        'Munich': 72,  # West Germany
+        'Montreal': 37,
+        'Moscow': 218,  # Soviet Union
+        'Seoul': 111,
+        'Barcelona': 65,
+        'Atlanta': 220,
+        'Sydney': 13,
+        'Beijing': 42,
+        'Rio de Janeiro': 30,
+        'Tokyo': 106,
+        'Paris': 71,
+        'Athina': 83,
+        'Moskva': 218,
+        
+    }
+
+    # Extract city names from the 'City' column and map to corresponding NOC codes
+    df['Host_country'] = df['City'].map(host_city_to_noc)
+
+    # Compare the NOC of the athlete with the host country's NOC
+    df['Home_Country'] = (df['NOC'] == df['Host_country']).astype(int)
+
+    # Save the updated dataset
+    df.to_csv(output_file, index=False)
+
+    print(f"Processed data saved as: {output_file}")
+
+
 delete_years("raw_data/summerOly_athletes.csv", "athlete_events.csv", [2024])
 get_team_sports("athlete_events.csv", "athlete_events.csv")
 get_irregularities("athlete_events.csv")
@@ -336,3 +383,4 @@ assign_id("athlete_events.csv", "athlete_events.csv")
 experience("athlete_events.csv", "athlete_events.csv")
 combine_teams("athlete_events.csv", "athlete_events.csv")
 reassign_ids("athlete_events.csv", "athlete_events.csv")
+home_country("athlete_events.csv", "athlete_events.csv")
