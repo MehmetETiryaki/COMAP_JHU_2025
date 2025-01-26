@@ -166,24 +166,6 @@ def delete_irregulars(irregular_txt, input_file, output_file):
 
     df.to_csv(output_file, index=False)
 
-def get_medal_tensor(input_file):
-    num_unique_times = len(pd.read_csv(input_file)["Year"].unique())
-    num_countries = len(pd.read_csv(input_file)["NOC"].unique())
-
-    medals_tensor = torch.zeros((num_unique_times, num_countries, 3))
-
-    for row in pd.read_csv(input_file).iterrows():
-        year = row[1]["Year"]
-        country = row[1]["NOC"]
-        medal = row[1]["Medal"]
-
-        if medal == "Gold":
-            medals_tensor[year][country][0] = 1
-        elif medal == "Silver":
-            medals_tensor[year][country][1] = 1
-        elif medal == "Bronze":
-            medals_tensor[year][country][2] = 1
-
 def assign_id(input_file, output_file):
     # Load the data
     df = pd.read_csv(input_file)
@@ -337,6 +319,76 @@ def reassign_ids(input_file, output_file):
     print(f"Processed data saved as: {output_file}")
 
 
+def get_medal_tensor(input_file):
+    num_unique_times = 31
+    num_countries = 234
+
+    medals_tensor = torch.zeros((num_unique_times, num_countries, 3))
+
+    for row in pd.read_csv(input_file).iterrows():
+        year = row[1]["Year"]
+        country = row[1]["NOC"]
+        medal = row[1]["Medal"]
+
+        if medal == "Gold":
+            medals_tensor[year][country][0] += 1
+        elif medal == "Silver":
+            medals_tensor[year][country][1] += 1
+        elif medal == "Bronze":
+            medals_tensor[year][country][2] += 1
+
+    return medals_tensor
+
+def get_theta_tensor(input_file):
+    df = pd.read_csv(input_file)
+
+    num_unique_times = 31
+    num_countries = 234
+    num_sports = 76
+
+    theta_tensor = torch.zeros((num_unique_times, num_countries, num_sports, 3))
+
+    for row in df.iterrows():
+        year = row[1]["Year"]
+        country = row[1]["NOC"]
+        sport = row[1]["Sport"]
+        medal = row[1]["Medal"]
+
+        if medal == "Gold":
+            theta_tensor[year][country][sport][0] += 1
+        elif medal == "Silver":
+            theta_tensor[year][country][sport][1] += 1
+        elif medal == "Bronze":
+            theta_tensor[year][country][sport][2] += 1
+
+    return theta_tensor
+
+def get_results_tensor(input_file):
+
+    df = pd.read_csv(input_file)
+    num_unique_times = 31
+    num_sports = 76
+    max_num_events = 137
+
+    results_tensor = torch.full((num_unique_times, num_sports, max_num_events, 3), -1)
+
+    for row in df.iterrows():
+        year = row[1]["Year"]
+        country = row[1]["NOC"]
+        sport = row[1]["Sport"]
+        event = row[1]["Event"]
+
+        if row[1]["Medal"] == "Gold":
+            results_tensor[year][sport][event][0] = country
+        elif row[1]["Medal"] == "Silver":
+            results_tensor[year][sport][event][1] = country
+        elif row[1]["Medal"] == "Bronze":
+            results_tensor[year][sport][event][2] = country
+
+    return results_tensor
+
+
+
 
 
 #get_team_sports("raw_data/summerOly_athletes.csv", "summerOly_athletes_team.csv")
@@ -346,4 +398,25 @@ def reassign_ids(input_file, output_file):
 #assign_id("summerOly_athletes_team_id_no_high_irregulars.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical.csv")
 #experience("summerOly_athletes_team_id_no_high_irregulars_numerical.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_experience.csv")
 #combine_teams("summerOly_athletes_team_id_no_high_irregulars_numerical_experience.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_experience_combined.csv")
-reassign_ids("summerOly_athletes_team_id_no_high_irregulars_numerical_experience_combined.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_experience_combined_reassigned.csv")
+#reassign_ids("summerOly_athletes_team_id_no_high_irregulars_numerical_experience_combined.csv", "summerOly_athletes_team_id_no_high_irregulars_numerical_experience_combined_reassigned.csv")
+
+#medals_tensor = get_medal_tensor("summerOly_athletes_team_id_no_high_irregulars_numerical_experience_combined_reassigned.csv")
+#with open("medals.txt", "w") as f:
+#    for i in range(medals_tensor.shape[0]):
+#        for j in range(medals_tensor.shape[1]):
+#            f.write(f"{i}| {j}: {medals_tensor[i][j]}\n")
+
+#theta_tensor = get_theta_tensor("summerOly_athletes_team_id_no_high_irregulars_numerical_experience_combined_reassigned.csv")
+#print(theta_tensor.shape)
+#with open("theta.txt", "w") as f:
+#    for i in range(theta_tensor.shape[0]):
+#        for j in range(theta_tensor.shape[1]):
+#            for k in range(theta_tensor.shape[2]):
+#                f.write(f"{i}| {j}| {k}: {theta_tensor[i][j][k]}\n")
+
+results_tensor = get_results_tensor("summerOly_athletes_team_id_no_high_irregulars_numerical_experience_combined_reassigned.csv")
+with open("results.txt", "w") as f:
+    for i in range(results_tensor.shape[0]):
+        for j in range(results_tensor.shape[1]):
+            for k in range(results_tensor.shape[2]):
+                    f.write(f"{i}| {j}| {k}: {results_tensor[i][j][k]}\n")
