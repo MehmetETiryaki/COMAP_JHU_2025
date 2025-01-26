@@ -4,11 +4,8 @@ import torch
 import torch.distributions.constraints as constraints
 import pyro
 from pyro.optim import Adam
-from pyro.optim import ReduceLROnPlateau
 from pyro.infer import SVI, Trace_ELBO
 import pyro.distributions as dist
-import numpyro.distributions as numpyro_dist
-import numpyro as npyro
 
 import pickle
 import pandas as pd
@@ -213,8 +210,8 @@ def guide(data):
     rho = pyro.sample("rho", dist.Beta(rho_alpha, rho_beta))
 
     alpha_loc = pyro.param("alpha_loc", torch.zeros(n_countries))
-    #alpha_scale = pyro.param("alpha_scale", torch.eye(n_countries), constraint=constraints.positive)
-    alpha = pyro.sample("alpha", dist.MultivariateNormal(alpha_loc, torch.eye(n_countries)))
+    alpha_scale = pyro.param("alpha_scale", torch.eye(n_countries), constraint=constraints.positive)
+    alpha = pyro.sample("alpha", dist.MultivariateNormal(alpha_loc, alpha_scale))
 
     # Learnable parameters for Dirichlet priors
     w_loc = pyro.param("w_loc", torch.zeros(3))
@@ -301,6 +298,8 @@ if __name__ == "__main__":
             print(f"Step {step} loss = {svi.evaluate_loss(data)}")
             #print(pyro.param("alpha_loc")[220], pyro.param("alpha_loc").mean())
             print(pyro.param("phi_alpha"))
+        if step % 100 == 0:
+            pyro.get_param_store().save("trained_model_params.pth")
         
 
     #save the model parameters
