@@ -1,1 +1,1 @@
-sig2
+amma*theta[t,:,:,1
