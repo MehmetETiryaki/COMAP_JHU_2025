@@ -1,1 +1,0 @@
-amma*theta[t,:,:,1
